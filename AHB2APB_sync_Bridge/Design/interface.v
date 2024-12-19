@@ -3,7 +3,7 @@ module interface #(
     parameter DATAWIDTH = 32,
 ) (
     // AHB bus signals
-    input                   HCLK, //
+    input                   HCLK, // AHB clock
     input                   HRESETn,
 
     input                   HSEL,
