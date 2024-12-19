@@ -62,3 +62,9 @@
 | -------------- | --- | ---------------------------------------------------------- |
 | REGISTER_WDATA | 1/0 | 为1则寄存写数据（3 clk cycles），0则不寄存（2 clk cycles） |
 | REGISTER_RDATA | 1/0 | 为1则寄存读数据（3 clk cycles），0则不寄存（2 clk cycles） |
+
+## 时序图
+
+burst传输时序图 apb需要2拍处理一个数据，所以每个hready会拉低一拍。
+
+![1734608565363](image/AHB-Lite2APB_Designdoc/1734608565363.png)
