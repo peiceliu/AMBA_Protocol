@@ -1,0 +1,14 @@
+AHB2APB_sync_Bridge/Design/makefile
+*.log
+*.tcl
+*.lis
+*.sdc
+makefile.*
+*.f
+*.makefile
+*.rs
+*.gitkeep
+*.setup
+AHB2APB_sync_Bridge/Design/tsk/timescale.v
+makefile
+*.list
