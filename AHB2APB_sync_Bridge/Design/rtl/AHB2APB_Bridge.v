@@ -1,3 +1,7 @@
+
+
+
+
 module ahb2apb_bridge #(
     parameter ADDRWIDTH = 16,
     parameter DATAWIDTH = 32,
@@ -24,23 +28,28 @@ module ahb2apb_bridge #(
     // APB bus signals
     input                   PCLKEN,
     input   [DATAWIDTH-1:0] PRDATA,
-    input                   PREADY,
-    input                   PSLVERR,
-
     output                  PSEL,
     output                  PENABLE,
     output  [ADDRWIDTH-1:0] PADDR,
     output                  PWRITE,
     output  [DATAWIDTH-1:0] PWDATA,
+
+    `ifdef APB3
+    input                   PREADY,
+    input                   PSLVERR,
+    `endif
+
+    `ifdef APB4
     output  [2:0]           PPROT,
     output  [3:0]           PSTRB,
+    `endif
 
     output                  APBACTIVE
 
 );
 
 reg [ADDRWIDTH-1:0] addr_reg;
-reg                 write_reg;
+reg                 write_reg; // HWIRTE reg
 reg [DATAWIDTH-1:0] data_reg;
 
 reg [2:0]           state_reg;
@@ -73,12 +82,13 @@ end
 
 assign apb_sel = (HSEL && HREADY && HTRANS[1]) ? 1'b1 : 1'b0 ; // HTRANS[1]的时候代表不在空闲状态
 
+// 地址是否寄存 寄存时对齐边界
 always @(posedge HCLK or negedge HRESETn) begin
     if(!HRESETn)begin
         addr_reg <= 'b0 ;
         write_reg <= 'b0 ;
     end else if(apb_sel)begin
-        addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;              // 地址对齐
+        addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
         write_reg <= HWRITE ;
     end else begin
         addr_reg <= addr_reg ;
@@ -86,7 +96,7 @@ always @(posedge HCLK or negedge HRESETn) begin
     end
 end
 
-
+// 状态机
 always @(posedge HCLK or negedge HRESETn) begin
     if (!HRESETn) begin
         state_reg <= IDLE ;
@@ -104,7 +114,7 @@ always @(*)begin
                 if(apb_sel && PCLKEN && (~(wdata_ifreg && HWRITE)))begin
                     next_state = SETUP ;
                 end else begin
-                next_state = IDLE ;
+                    next_state = IDLE ;
                 end
             end
         end
@@ -145,7 +155,7 @@ always @(*)begin
             HREADYOUT = 1'b0 ;
         end
         SETUP:begin
-            HREADYOUT = 1'b1 ;
+            HREADYOUT = 1'b0 ;
         end
         PROCESS:begin
             HREADYOUT = 1'b1 && PCLKEN ;
