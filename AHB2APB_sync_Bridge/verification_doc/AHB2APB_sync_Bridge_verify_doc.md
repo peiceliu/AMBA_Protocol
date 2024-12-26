@@ -15,7 +15,7 @@
 | 日期      | 修订版本 | 描述                     | 作者 |
 | --------- | -------- | ------------------------ | ---- |
 | 2024-12-18| V0.1     | 初始化验证报告            | 刘培策|
-|           |          |                          |      |
+| 2024-12-26| V0.2     | 添加验证思路              | 刘培策|
 |           |          |                          |      |
 |           |          |                          |      |
 
@@ -45,9 +45,25 @@
 ### 验证思路
 
 *（针对上一章节的主体功能，如何保证验证的充分性和完备性等，验证的思路描述。）*
-定向测试：
-随机约束测试：
-SVA断言：
+该模块主要的功能为：将AHB Bus上的read/write transfer转换为APB Bus上的read/write transfer。
+reference model需要实现与DUT一样的功能，初步想法为：
+1. 使用ahb_master_monitor采集相关AHB master传输到AHB2APB_sync_Bridge的有效数据
+2. 使用apb_slave_monitor采集相关APB slave传输到AHB2APB_sync_Bridge的有效数据
+3. 使用output_monitor采集AHB2APB_sync_Bridge的输出结果，即AHB2APB_sync_Bridge传输给APB slave、AHB master的数据。
+4. 将以上全部数据送到reference model进行处理
+5. 将rm处理后的数据送到scoreboard，与DUT的输出结果进行比对
+
+更为具体的：
+1. 需要确定每个monitor在什么condition下采集的数据才是有效的
+2. reference model 需要判断当前AHB master的transfer是read or write。
+如果是write说明当前为AHB write transfer转换为 APB write transfer，reference model需要给出PWRITE == 1； PWDATA == HWDATA；PADDR == HADDR；
+如果是read说明当前为AHB read transfer转换为 APB read transfer，reference model需要给出PWRITE == 0；HRDATA == PRDATA；PADDR == HADDR；
+3. 此外需要注意AHB BUS 为流水线设计，即分为地址/数据两个阶段。第一个阶段为address，第二个阶段为data。
+
+
+定向测试：采用一些固定激励且知道预期结果的简单测试用例，通过观察波形来确定是否Pass。
+随机约束测试：采用全随机的测试用例进行仿真，通过reference model与scoreboard来确定是否Pass。
+SVA断言：对一些控制信号的逻辑以及数据/地址需要保持不变的阶段设置System Verilog Assertion断言来确定是否符合规范。
 
 ### 验证平台介绍
 
