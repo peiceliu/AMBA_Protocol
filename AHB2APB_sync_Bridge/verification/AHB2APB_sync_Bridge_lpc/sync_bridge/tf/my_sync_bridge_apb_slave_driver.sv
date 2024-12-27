@@ -57,21 +57,14 @@ task my_sync_bridge_apb_slave_driver::main_phase(uvm_phase phase);
 endtask
 
 task my_sync_bridge_apb_slave_driver::drive_one_pkt(my_sync_bridge_apb_slave_transaction tr);
-    //byte unsigned     data_q[];
-    //int  data_size;
-    //
-    //data_size = tr.pack_bytes(data_q) / 8; 
-    ////`uvm_info("my_sync_bridge_apb_slave_driver", "begin to drive one pkt", UVM_LOW);
-    //repeat(3) @(posedge vif.clk);
-    //for ( int i = 0; i < data_size; i++ ) begin
-    //   @(posedge vif.clk);
-    //   vif.valid <= 1'b1;
-    //   vif.data <= data_q[i]; 
-    //end
 
-    //@(posedge vif.clk);
-    //vif.valid <= 1'b0;
-    ////`uvm_info("my_sync_bridge_apb_slave_driver", "end drive one pkt", UVM_LOW);
+    if(vif.pclken === 1'b1)begin
+        vif.prdata <= tr.prdata;
+        vif.pready <= tr.pready;
+        vif.pslverr <= tr.pslverr;
+    end
+    @(posedge vif.clk);
+
 endtask
 
 

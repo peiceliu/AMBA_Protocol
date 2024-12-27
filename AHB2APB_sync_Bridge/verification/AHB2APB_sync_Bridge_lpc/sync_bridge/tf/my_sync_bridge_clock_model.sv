@@ -51,5 +51,9 @@ task my_sync_bridge_clock_model::run_phase(uvm_phase phase);
             #1000ns;
             vif.rst_n = 1'b1;
         end
+        begin
+            vif.pclken <= 1'b1;
+            // forever #(cycle/2) vif.pclken <= ~vif.pclken;
+        end
     join
 endtask
