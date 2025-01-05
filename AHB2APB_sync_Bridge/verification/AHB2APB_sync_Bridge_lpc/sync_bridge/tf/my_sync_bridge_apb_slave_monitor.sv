@@ -14,9 +14,10 @@ class my_sync_bridge_apb_slave_monitor extends uvm_monitor;
     `uvm_component_utils(my_sync_bridge_apb_slave_monitor)
 
     virtual my_sync_bridge_interface vif;
-    my_sync_bridge_apb_slave_transaction tr ;
+    // my_sync_bridge_apb_slave_transaction tr ;
+    my_sync_bridge_apb_slave_monitor_transaction apb_monitor_tr;
 
-    uvm_analysis_port #(my_sync_bridge_apb_slave_transaction)  ap;
+    uvm_analysis_port #(my_sync_bridge_apb_slave_monitor_transaction)  ap;
     
     function new(string name = "my_sync_bridge_apb_slave_monitor", uvm_component parent = null);
         super.new(name, parent);
@@ -24,7 +25,7 @@ class my_sync_bridge_apb_slave_monitor extends uvm_monitor;
 
     extern virtual function void build_phase(uvm_phase phase);
     extern task main_phase(uvm_phase phase);
-    extern task collect_one_pkt(my_sync_bridge_apb_slave_transaction tr);
+    extern task collect_one_pkt(my_sync_bridge_apb_slave_monitor_transaction apb_monitor_tr);
 endclass
 
 function void my_sync_bridge_apb_slave_monitor::build_phase(uvm_phase phase);
@@ -38,15 +39,42 @@ function void my_sync_bridge_apb_slave_monitor::build_phase(uvm_phase phase);
 endfunction
 
 task my_sync_bridge_apb_slave_monitor::main_phase(uvm_phase phase);
-    my_sync_bridge_apb_slave_transaction tr;
+    my_sync_bridge_apb_slave_monitor_transaction apb_monitor_tr;
     while(1) begin
-        tr = new("tr");
-        collect_one_pkt(tr);
-        ap.write(tr);
+        apb_monitor_tr = new("tr");
+        collect_one_pkt(apb_monitor_tr);
+        ap.write(apb_monitor_tr);
     end
 endtask
 
-task my_sync_bridge_apb_slave_monitor::collect_one_pkt(my_sync_bridge_apb_slave_transaction tr);
+bit monitor_result;
+task my_sync_bridge_apb_slave_monitor::collect_one_pkt(my_sync_bridge_apb_slave_monitor_transaction apb_monitor_tr);
+    `ifdef APB3
+        monitor_result = vif.psel && vif.penable && vif.pready;
+    `else 
+        monitor_result = vif.psel && vif.penable;
+    `endif
+
+    if(monitor_result)begin
+        // `uvm_info("my_sync_bridge_apb_slave_monitor", "begin to collect one pkt", UVM_LOW);
+        apb_monitor_tr.prdata = vif.prdata;
+        `ifdef APB3
+            apb_monitor_tr.pready = vif.pready;
+            apb_monitor_tr.pslverr = vif.pslverr;
+        `endif
+        apb_monitor_tr.psel = vif.psel;
+        apb_monitor_tr.penable = vif.penable;
+        apb_monitor_tr.paddr = vif.paddr;
+        apb_monitor_tr.pwrite = vif.pwrite;
+        apb_monitor_tr.pwdata = vif.pwdata;
+        `ifdef APB4
+            apb_monitor_tr.pport = vif.pport;
+            apb_monitor_tr.pstrb = vif.pstrb;
+        `endif
+        apb_monitor_tr.apbactive = vif.apbactive;
+        `uvm_info("my_sync_bridge_apb_slave_monitor", "begin to print once apb_diy_pkt", UVM_LOW);
+        apb_monitor_tr.print();
+    end
     @(posedge vif.clk);
     //byte unsigned data_q[$];
     //byte unsigned data_array[];

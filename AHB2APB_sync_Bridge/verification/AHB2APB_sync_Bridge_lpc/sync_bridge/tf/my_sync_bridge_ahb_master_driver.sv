@@ -60,29 +60,31 @@ bit [`ADDRWIDTH-1:0]HADDR;
 bit [1:0] HTRANS;
         
 task my_sync_bridge_ahb_master_driver::drive_one_pkt(my_sync_bridge_ahb_master_transaction tr);
-    if(tr.hsel === 1'b1 &&  vif.hreadyout === 1'b0 &&  vif.hresp === `OKAY)begin   //首先判断当前是否为 waited transfers
-        if(HTRANS === `IDLE && tr.htrans=== `NONSEQ )begin
-            vif.haddr <= tr.haddr;
-            vif.htrans <= tr.htrans;
-        end else if(HTRANS === `BUSY &&  tr.htrans === `SEQ)begin
-            vif.haddr <= HADDR;
-            vif.htrans <= tr.htrans;
-        end else if(HTRANS === `BUSY &&  tr.htrans === `NONSEQ)begin
-            vif.haddr <= tr.haddr;
-            vif.htrans <= tr.htrans;
-        end else if(HTRANS === `IDLE &&  tr.htrans === `IDLE)begin
-            vif.haddr <= tr.haddr;
-            vif.htrans <= tr.htrans;
-        end else begin
-            vif.haddr <= HADDR;
-            vif.htrans <= HTRANS;end
-    end else if(tr.hsel === 1'b1 &&  vif.hreadyout === 1'b0 &&  vif.hresp === `ERROR)begin
-        vif.haddr <= tr.haddr;
-        vif.htrans <= tr.htrans;
-    end else begin
-        vif.haddr <= tr.haddr;
-        vif.htrans <= tr.htrans;
-    end
+    // if(tr.hsel === 1'b1 &&  vif.hreadyout === 1'b0 &&  vif.hresp === `OKAY)begin   //首先判断当前是否为 waited transfers
+    //     if(HTRANS === `IDLE && tr.htrans=== `NONSEQ )begin
+    //         vif.haddr <= tr.haddr;
+    //         vif.htrans <= tr.htrans;
+    //     end else if(HTRANS === `BUSY &&  tr.htrans === `SEQ)begin
+    //         vif.haddr <= HADDR;
+    //         vif.htrans <= tr.htrans;
+    //     end else if(HTRANS === `BUSY &&  tr.htrans === `NONSEQ)begin
+    //         vif.haddr <= tr.haddr;
+    //         vif.htrans <= tr.htrans;
+    //     end else if(HTRANS === `IDLE &&  tr.htrans === `IDLE)begin
+    //         vif.haddr <= tr.haddr;
+    //         vif.htrans <= tr.htrans;
+    //     end else begin
+    //         vif.haddr <= HADDR;
+    //         vif.htrans <= HTRANS;end
+    // end else if(tr.hsel === 1'b1 &&  vif.hreadyout === 1'b0 &&  vif.hresp === `ERROR)begin
+    //     vif.haddr <= tr.haddr;
+    //     vif.htrans <= tr.htrans;
+    // end else begin
+    //     vif.haddr <= tr.haddr;
+    //     vif.htrans <= tr.htrans;
+    // end
+    vif.haddr <= tr.haddr;
+    vif.htrans <= tr.htrans;
     vif.hsel <= tr.hsel;
     vif.hsize <= tr.hsize;
     vif.hport <= tr.hport;
@@ -94,6 +96,7 @@ task my_sync_bridge_ahb_master_driver::drive_one_pkt(my_sync_bridge_ahb_master_t
         HADDR <= tr.haddr;
         HTRANS <= tr.htrans;
 
+    // vif.pclken <= 1'b1;
     @(posedge vif.clk);
     `uvm_info("my_sync_bridge_ahb_master_driver","had driven one ahb_input pkt successfully",UVM_LOW);
 

@@ -37,12 +37,19 @@ interface my_sync_bridge_interface();
     `ifdef APB3
     logic  pready;
     logic  pslverr;
-    `elsif APB4
+    `endif 
+    
+    `ifdef  APB4
     logic  pready;
     logic  pslverr;
     logic  [3:0] pstrb;
     logic  [2:0] pport;
     `endif
+
+    // `ifdef APB4
+    // logic  [3:0] pstrb;
+    // logic  [2:0] pport;
+    // `endif
     // clocking cb @(posedge clk);
 
     // endclocking

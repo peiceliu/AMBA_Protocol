@@ -17,6 +17,6 @@ class my_sync_bridge_ahb_master_sequencer extends uvm_sequencer #(my_sync_bridge
     function new(string name= "my_sync_bridge_ahb_master_sequencer", uvm_component parent=null);
         super.new(name, parent);
     endfunction 
-   
+
 endclass
 
