@@ -1,8 +1,8 @@
 module ahb2apb_bridge #(
     parameter ADDRWIDTH = 16,
     parameter DATAWIDTH = 32,
-    parameter REGISTER_WDATA = 1,
-    parameter REGISTER_RDATA = 1
+    parameter REGISTER_WDATA = 0,
+    parameter REGISTER_RDATA = 0
 ) (
     // AHB bus signals
     input                   HCLK,      // AHB clock
@@ -44,8 +44,8 @@ module ahb2apb_bridge #(
 );
 
     // 内部信号定义
-    reg [DATAWIDTH-1:0] write_data_reg; // 写数据寄存
-    reg [DATAWIDTH-1:0] read_data_reg;  // 读数据寄存
+    reg [DATAWIDTH-1:0] data_reg; // 数据寄存
+    reg [ADDRWIDTH-1:0] addr_reg; // 地址寄存
     // reg ahb_read_active;                // AHB读指示
     // reg ahb_write_active;               // AHB写指示
     reg apb_transaction_done;           // APB传输完成
@@ -99,13 +99,17 @@ module ahb2apb_bridge #(
             end
             PROCESSING: begin
                 `ifdef APB3
-                if (PREADY && PCLKEN) begin
+                if (PREADY && PCLKEN && ahb_active) begin
+                    next_state = SETUP;
+                end else if (PREADY && PCLKEN) begin
                     next_state = IDLE;
                 end else begin
                     next_state = PROCESSING;
                 end
                 `else
-                if (PCLKEN) begin
+                if (PCLKEN && ahb_active) begin
+                    next_state = SETUP;
+                end else if (PCLKEN) begin
                     next_state = IDLE;
                 end else begin
                     next_state = PROCESSING;
@@ -116,103 +120,117 @@ module ahb2apb_bridge #(
         endcase
     end
 
-    // 状态机输出
+
+    // 状态机信号输出 2.0版
+    always @(*)begin
+        case(current_state)
+            IDLE:begin
+                PSEL = 'b0;
+                PENABLE = 'b0;
+                HREADYOUT = 'b1;
+                HRESP = 'b0;
+                APBACTIVE = 'b0;
+                apb_transaction_done = 'b0;
+            end
+            SETUP:begin
+                PSEL = 'b1;
+                PENABLE = 'b0;
+                HRESP = 'b0;
+                APBACTIVE = 'b1;
+                HREADYOUT = 'b0;
+                apb_transaction_done = 'b0;
+            end
+            PROCESSING:begin
+                PSEL = 'b1;
+                PENABLE = 'b1;
+                HREADYOUT = 'b1;
+                HRESP = 'b0;
+                APBACTIVE = 'b1;
+                apb_transaction_done = 'b1;
+            end
+            default: begin
+                PSEL = 'b0;
+                PENABLE = 'b0;
+                HREADYOUT = 'b0;
+                HRESP = 'b0;
+                APBACTIVE = 'b0;
+                apb_transaction_done = 'b0;
+        end
+        endcase
+    end
+
+    // 地址/写使能信号寄存
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
-            PSEL <= 'b0;
-            PENABLE <= 'b0;
-            PADDR <= 'b0;
+            addr_reg <= 'b0;
             PWRITE <= 'b0;
-            PWDATA <= 'b0;
-            HREADYOUT <= 'b1;
-            HRDATA <= 'b0;
-            HRESP <= 'b0;
-            APBACTIVE <= 'b0;
-            apb_transaction_done <= 'b0;
-
-            // APB4 signals
-            `ifdef APB4
-            PPROT <= 'b0;
-            PSTRB <= 'b0;
-            `endif
+        end else if (current_state == IDLE || ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
+            addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
+            PWRITE <= HWRITE;
         end else begin
-            case (current_state)
-                IDLE: begin
-                    PSEL <= 'b0;
-                    PENABLE <= 'b0;
-                    HREADYOUT <= 'b1;
-                    HRESP <= 'b0;
-                    APBACTIVE <= 'b0;
-                    apb_transaction_done <= 'b0;
+            addr_reg <= addr_reg;
+            PWRITE <= PWRITE;
+        end
+    end
 
-                    if (ahb_active) begin
-                        PADDR <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
-                        PWRITE <= HWRITE;
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            PADDR <= 'b0;
+        end else begin
+            if (current_state == IDLE || apb_transaction_done) begin
+                PADDR <= addr_reg;
+            end else begin
+                PADDR <= PADDR;
+            end
+        end
+    end
 
-                        // Register write data if enabled
-                        if (wdata_ifreg) begin
-                            write_data_reg <= HWDATA;
-                        end else begin
-                            PWDATA <= HWDATA;
-                        end
 
-                        APBACTIVE <= 'b1;
-                        HREADYOUT <= 'b0;
-                    end
+
+    // 数据寄存
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            data_reg <= 'b0;
+        end else begin
+            if (HWRITE && wdata_ifreg) begin
+                data_reg <= HWDATA; // 写操作时更新 data_reg
+            end else if (!HWRITE && rdata_ifreg) begin
+                data_reg <= PRDATA; // 读操作时更新 data_reg
+            end
+        end
+    end
+
+    // 写数据输出
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            PWDATA <= 'b0;
+        end else begin
+            if(ahb_write)begin
+                if(wdata_ifreg)begin
+                    PWDATA <= data_reg;
+                end else begin
+                    PWDATA <= HWDATA;
                 end
-                SETUP: begin
-                    PSEL <= 'b1;
-                    PENABLE <= 'b0;
-                    HRESP <= 'b0;
+            end else begin
+                PWDATA <= PWDATA;
+            end
+        end
+    end
 
-                    if (!wdata_ifreg) begin
-                        PWDATA <= HWDATA;
-                    end
+    // 读数据输出
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            HRDATA <= 'b0;
+        end else begin
+            if(ahb_read)begin
+                if(rdata_ifreg)begin
+                    HRDATA <= data_reg;
+                end else begin
+                    HRDATA <= PRDATA;
                 end
-                PROCESSING: begin
-                    if (PCLKEN) begin
-                        PENABLE <= 'b1;
-
-                        // APB write
-                        if (PWRITE) begin
-                            if (wdata_ifreg) begin
-                                PWDATA <= write_data_reg;
-                            end
-                        end
-
-                        // APB read
-                        if (!PWRITE) begin
-                            if (rdata_ifreg) begin
-                                read_data_reg <= PRDATA;
-                            end else begin
-                                HRDATA <= PRDATA;
-                            end
-                        end
-
-                        `ifdef APB3
-                        if (PREADY) begin
-                            PENABLE <= 'b0;
-                            PSEL <= 'b0;
-                            HREADYOUT <= 'b1;
-
-                            if (!PWRITE && rdata_ifreg) begin
-                                HRDATA <= read_data_reg;
-                            end
-                            apb_transaction_done <= 'b1;
-                        end
-                        `else
-                        PENABLE <= 'b0;
-                        PSEL <= 'b0;
-                        HREADYOUT <= 'b1;
-
-                        if (!PWRITE && rdata_ifreg) begin
-                            HRDATA <= read_data_reg;
-                        end
-                        apb_transaction_done <= 'b1;
-                        `endif
-                    end
-                end
-            endcase
+            end else begin
+                HRDATA <= HRDATA;
+            end
         end
     end
 
