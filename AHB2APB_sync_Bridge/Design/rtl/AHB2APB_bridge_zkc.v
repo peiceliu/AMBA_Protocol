@@ -164,7 +164,7 @@ module ahb2apb_bridge #(
         if (!HRESETn) begin
             addr_reg <= 'b0;
             PWRITE <= 'b0;
-        end else if (current_state == IDLE || ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
+        end else if ((current_state == IDLE && HSEL)|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
             addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
             PWRITE <= HWRITE;
         end else begin
