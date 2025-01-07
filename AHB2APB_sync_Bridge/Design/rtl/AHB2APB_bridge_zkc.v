@@ -64,14 +64,15 @@ module ahb2apb_bridge #(
 
     // fsm_state_t current_state, next_state;
 
-    reg [1:0]           current_state;
-    reg [1:0]           next_state;
+    reg [2:0]           current_state;
+    reg [2:0]           next_state;
 
 
-    localparam IDLE  = 2'b00;
-    localparam SETUP = 2'b01;
-    localparam PROCESSING = 2'b10;
-    // localparam READ_WAIT = 2'b11;
+    localparam IDLE  = 3'b000;
+    localparam SETUP = 3'b001;
+    localparam PROCESSING = 3'b010;
+    localparam READ_WAIT = 3'b011;
+    localparam READ_WAIT2 = 3'b100;
 
     // AHB 信号
     wire ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY; // HTRANS[1] == 1 可进行传输
@@ -113,6 +114,16 @@ module ahb2apb_bridge #(
                 end
             end
             SETUP: begin
+                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0) begin
+                    next_state = READ_WAIT;
+                end else begin
+                    next_state = PROCESSING;
+                end
+            end
+            READ_WAIT: begin
+                next_state = READ_WAIT2;
+            end
+            READ_WAIT2: begin
                 next_state = PROCESSING;
             end
             PROCESSING: begin
@@ -125,7 +136,7 @@ module ahb2apb_bridge #(
                     next_state = PROCESSING;
                 end
                 `else
-                if ((PCLKEN && ahb_active)|| (HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0) ) begin
+                if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
                 end else if (PCLKEN) begin
                     next_state = IDLE;
@@ -158,17 +169,29 @@ module ahb2apb_bridge #(
                 HREADYOUT = 'b0;
                 apb_transaction_done = 'b0;
             end
+            READ_WAIT:begin
+                PSEL = 'b1;
+                PENABLE = 'b1;
+                HRESP = 'b0;
+                APBACTIVE = 'b1;
+                HREADYOUT = 'b0;
+                apb_transaction_done = 'b1;
+            end
+            READ_WAIT2:begin
+                PSEL = 'b1;
+                PENABLE = 'b0;
+                HRESP = 'b0;
+                APBACTIVE = 'b1;
+                HREADYOUT = 'b0;
+                apb_transaction_done = 'b0;
+            end
             PROCESSING:begin
                 PSEL = 'b1;
                 PENABLE = 'b1;
                 HRESP = 'b0;
                 APBACTIVE = 'b1;
+                HREADYOUT = 'b1;
                 apb_transaction_done = 'b1;
-                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0)begin
-                    HREADYOUT = 'b0;
-                end else begin
-                    HREADYOUT = 'b1;
-                end
             end
             default: begin
                 PSEL = 'b0;
@@ -181,7 +204,16 @@ module ahb2apb_bridge #(
         endcase
     end
 
-
+    // always @(*) begin
+    //     HREADYOUT = 'b1;
+    //     if(current_state == SETUP) begin
+    //         HREADYOUT = 'b0;
+    //     end else if((current_state == PROCESSING) && ) begin
+    //         HREADYOUT = 'b1;
+    //     end else begin
+    //         HREADYOUT = 'b1;
+    //     end
+    // end
 
     // 地址/写使能信号寄存
     always @(posedge HCLK or negedge HRESETn) begin
@@ -249,22 +281,6 @@ module ahb2apb_bridge #(
     end
 
     // 读数据输出
-    // always @(posedge HCLK or negedge HRESETn) begin
-    //     if (!HRESETn) begin
-    //         HRDATA <= 'b0;
-    //     end else begin
-    //         if(ahb_read)begin
-    //             if(rdata_ifreg)begin
-    //                 HRDATA <= data_reg;
-    //             end else begin
-    //                 HRDATA <= PRDATA;
-    //             end
-    //         end else begin
-    //             HRDATA <= HRDATA;
-    //         end
-    //     end
-    // end
-
     assign HRDATA = (rdata_ifreg == 1'b1) ? data_reg : PRDATA ;
 
     // APB4 signals 随便写的
