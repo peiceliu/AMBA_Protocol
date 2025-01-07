@@ -50,6 +50,8 @@ module ahb2apb_bridge #(
     // reg ahb_write_active;               // AHB写指示
     reg apb_transaction_done;           // APB传输完成
 
+    reg HSEL_reg; // AHB select寄存
+
     // 状态机定义
     // typedef enum logic [1:0] {
     //     IDLE  = 2'b00,
@@ -75,6 +77,16 @@ module ahb2apb_bridge #(
     assign wdata_ifreg = (REGISTER_WDATA == 1) ? 1'b1 : 1'b0 ;
     assign rdata_ifreg = (REGISTER_RDATA == 1) ? 1'b1 : 1'b0 ;
 
+    // AHB select寄存
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            HSEL_reg <= 'b0;
+        end else begin
+            HSEL_reg <= HSEL;
+        end
+    end
+
+
     // 状态机
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
@@ -88,7 +100,7 @@ module ahb2apb_bridge #(
     always @(*) begin
         case (current_state)
             IDLE: begin
-                if (ahb_active) begin
+                if (ahb_active && HSEL_reg) begin
                     next_state = SETUP;
                 end else begin
                     next_state = IDLE;
@@ -151,13 +163,15 @@ module ahb2apb_bridge #(
             default: begin
                 PSEL = 'b0;
                 PENABLE = 'b0;
-                HREADYOUT = 'b0;
+                HREADYOUT = 'b1;
                 HRESP = 'b0;
                 APBACTIVE = 'b0;
                 apb_transaction_done = 'b0;
         end
         endcase
     end
+
+
 
     // 地址/写使能信号寄存
     always @(posedge HCLK or negedge HRESETn) begin
@@ -177,7 +191,8 @@ module ahb2apb_bridge #(
         if (!HRESETn) begin
             PADDR <= 'b0;
         end else begin
-            if (current_state == IDLE || apb_transaction_done) begin
+            // if (current_state == IDLE || apb_transaction_done) begin
+            if(ahb_active)  begin
                 PADDR <= addr_reg;
             end else begin
                 PADDR <= PADDR;
@@ -205,7 +220,7 @@ module ahb2apb_bridge #(
         if (!HRESETn) begin
             PWDATA <= 'b0;
         end else begin
-            if(ahb_write)begin
+            if(ahb_write && HSEL_reg)begin
                 if(wdata_ifreg)begin
                     PWDATA <= data_reg;
                 end else begin
@@ -218,21 +233,23 @@ module ahb2apb_bridge #(
     end
 
     // 读数据输出
-    always @(posedge HCLK or negedge HRESETn) begin
-        if (!HRESETn) begin
-            HRDATA <= 'b0;
-        end else begin
-            if(ahb_read)begin
-                if(rdata_ifreg)begin
-                    HRDATA <= data_reg;
-                end else begin
-                    HRDATA <= PRDATA;
-                end
-            end else begin
-                HRDATA <= HRDATA;
-            end
-        end
-    end
+    // always @(posedge HCLK or negedge HRESETn) begin
+    //     if (!HRESETn) begin
+    //         HRDATA <= 'b0;
+    //     end else begin
+    //         if(ahb_read)begin
+    //             if(rdata_ifreg)begin
+    //                 HRDATA <= data_reg;
+    //             end else begin
+    //                 HRDATA <= PRDATA;
+    //             end
+    //         end else begin
+    //             HRDATA <= HRDATA;
+    //         end
+    //     end
+    // end
+
+    assign HRDATA = (rdata_ifreg == 1'b1) ? data_reg : PRDATA ;
 
     // APB4 signals 随便写的
     `ifdef APB4
