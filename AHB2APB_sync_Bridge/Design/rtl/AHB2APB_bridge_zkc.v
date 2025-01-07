@@ -51,6 +51,7 @@ module ahb2apb_bridge #(
     reg apb_transaction_done;           // APB传输完成
 
     reg HSEL_reg; // AHB select寄存
+    reg HWRITE_reg; // AHB write寄存
 
     // 状态机定义
     // typedef enum logic [1:0] {
@@ -177,25 +178,28 @@ module ahb2apb_bridge #(
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             addr_reg <= 'b0;
-            PWRITE <= 'b0;
+            HWRITE_reg <= 'b0;
         end else if ((current_state == IDLE && HSEL)|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
             addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
-            PWRITE <= HWRITE;
+            HWRITE_reg <= HWRITE;
         end else begin
             addr_reg <= addr_reg;
-            PWRITE <= PWRITE;
+            HWRITE_reg <= HWRITE_reg;
         end
     end
 
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             PADDR <= 'b0;
+            PWRITE <= 'b0;
         end else begin
             // if (current_state == IDLE || apb_transaction_done) begin
             if(ahb_active)  begin
                 PADDR <= addr_reg;
+                PWRITE <= HWRITE_reg;
             end else begin
                 PADDR <= PADDR;
+                PWRITE <= PWRITE;
             end
         end
     end
