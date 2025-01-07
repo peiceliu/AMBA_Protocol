@@ -60,8 +60,10 @@ task my_sync_bridge_apb_slave_driver::drive_one_pkt(my_sync_bridge_apb_slave_tra
 
     if(vif.pclken === 1'b1)begin
         vif.prdata <= tr.prdata;
+        `ifdef APB3
         vif.pready <= tr.pready;
         vif.pslverr <= tr.pslverr;
+        `endif
     end
     @(posedge vif.clk);
 
