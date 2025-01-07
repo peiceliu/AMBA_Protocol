@@ -101,7 +101,9 @@ module ahb2apb_bridge #(
     always @(*) begin
         case (current_state)
             IDLE: begin
-                if (ahb_active && HSEL_reg) begin
+                if (HWRITE && ahb_active && HSEL_reg) begin
+                    next_state = SETUP;
+                end else if (!HWRITE && ahb_active) begin
                     next_state = SETUP;
                 end else begin
                     next_state = IDLE;
