@@ -69,6 +69,7 @@ module ahb2apb_bridge #(
     localparam IDLE  = 2'b00;
     localparam SETUP = 2'b01;
     localparam PROCESSING = 2'b10;
+    // localparam READ_WAIT = 2'b11;
 
     // AHB 信号
     wire ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY; // HTRANS[1] == 1 可进行传输
@@ -226,7 +227,7 @@ module ahb2apb_bridge #(
         if (!HRESETn) begin
             PWDATA <= 'b0;
         end else begin
-            if(ahb_write && HSEL_reg)begin
+            if(ahb_active && HSEL_reg)begin
                 if(wdata_ifreg)begin
                     PWDATA <= data_reg;
                 end else begin
