@@ -125,7 +125,7 @@ module ahb2apb_bridge #(
                     next_state = PROCESSING;
                 end
                 `else
-                if (PCLKEN && ahb_active) begin
+                if ((PCLKEN && ahb_active)|| (HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0) ) begin
                     next_state = SETUP;
                 end else if (PCLKEN) begin
                     next_state = IDLE;
