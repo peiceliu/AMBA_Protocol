@@ -18,7 +18,7 @@ module AHB2APB_Bridge #(
 
     output reg                  HREADYOUT   ,
     output      [DATAWIDTH-1:0] HRDATA      ,
-    output      [1:0]           HRESP       ,
+    output                      HRESP       ,
 
     // APB bus signals
     input                       PCLKEN      ,
@@ -189,7 +189,7 @@ end
 
 assign HRDATA = PRDATA;
 assign APBACTIVE = (state1 != 'd0 || state2 != 'd0);
-assign HRESP = 'd0;
+assign HRESP = PSLVERR;
 `ifdef APB4 
     assign PSTRB = 'b1111;
 `endif
