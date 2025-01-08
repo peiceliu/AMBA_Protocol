@@ -249,7 +249,7 @@ module ahb2apb_bridge #(
         end
     end
 
-    assign PADDR = (HWRITE_reg == 'b1) ? PADDR_reg : addr_reg;
+    assign PADDR = (HWRITE_reg_reg == 'b1) ? PADDR_reg : addr_reg;
 
 
     // 数据寄存
