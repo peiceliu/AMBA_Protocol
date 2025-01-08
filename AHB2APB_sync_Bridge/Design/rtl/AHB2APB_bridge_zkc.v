@@ -26,7 +26,7 @@ module ahb2apb_bridge #(
     input   [DATAWIDTH-1:0] PRDATA,    // APB read data
     output reg              PSEL,      // APB select
     output reg              PENABLE,   // APB enable
-    output reg [ADDRWIDTH-1:0] PADDR,  // APB address
+    output  [ADDRWIDTH-1:0] PADDR,  // APB address
     output reg              PWRITE,    // APB write enable
     output reg [DATAWIDTH-1:0] PWDATA, // APB write data
 
@@ -46,6 +46,7 @@ module ahb2apb_bridge #(
     // 内部信号定义
     reg [DATAWIDTH-1:0] data_reg; // 数据寄存
     reg [ADDRWIDTH-1:0] addr_reg; // 地址寄存
+    reg [ADDRWIDTH-1:0] PADDR_reg; // 地址寄存
     // reg ahb_read_active;                // AHB读指示
     // reg ahb_write_active;               // AHB写指示
     reg apb_transaction_done;           // APB传输完成
@@ -234,20 +235,21 @@ module ahb2apb_bridge #(
 
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
-            PADDR <= 'b0;
+            PADDR_reg <= 'b0;
             PWRITE <= 'b0;
         end else begin
             // if (current_state == IDLE || apb_transaction_done) begin
             if(ahb_active)  begin
-                PADDR <= addr_reg;
+                PADDR_reg <= addr_reg;
                 PWRITE <= HWRITE_reg;
             end else begin
-                PADDR <= PADDR;
+                PADDR_reg <= PADDR_reg;
                 PWRITE <= PWRITE;
             end
         end
     end
 
+    assign PADDR = (HWRITE_reg == 'b1) ? PADDR_reg : addr_reg;
 
 
     // 数据寄存
