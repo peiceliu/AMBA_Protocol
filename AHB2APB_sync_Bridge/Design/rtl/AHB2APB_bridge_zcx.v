@@ -189,7 +189,11 @@ end
 
 assign HRDATA = PRDATA;
 assign APBACTIVE = (state1 != 'd0 || state2 != 'd0);
-assign HRESP = PSLVERR;
+`ifdef APB3
+    assign HRESP = PSLVERR;
+`else
+    assign HRESP = 'd0;
+`endif
 `ifdef APB4 
     assign PSTRB = 'b1111;
 `endif
