@@ -141,7 +141,7 @@ module ahb2apb_bridge2 #(
                     next_state = PROCESSING;
                 end
                 `else
-                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0) begin
+                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
                     next_state = WRITE_WAIT;
                 end else if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
@@ -255,12 +255,15 @@ module ahb2apb_bridge2 #(
     always@ (posedge HCLK or negedge HRESETn) begin
         if(!HRESETn)begin
             PWRITE <= 'b0;
+            PADDR_reg <= 'b0;
         end else begin
             if(current_state == IDLE && ahb_read)begin
                 PWRITE <= HWRITE;
+                PADDR_reg <= HADDR;
             end else begin
                 if(PENABLE || current_state == WRITE_WAIT) begin
                     PWRITE <= HWRITE_reg;
+                    PADDR_reg <= addr_reg;
                 end
             end
         end
@@ -268,19 +271,19 @@ module ahb2apb_bridge2 #(
 
 
 
-    always @(posedge HCLK or negedge HRESETn) begin
-        if (!HRESETn) begin
-            PADDR_reg <= 'b0;
-        end else begin
-            if(PENABLE || current_state == IDLE || current_state == WRITE_WAIT)  begin
-                PADDR_reg <= addr_reg;
-            end else begin
-                PADDR_reg <= PADDR_reg;
-            end
-        end
-    end
+    // always @(posedge HCLK or negedge HRESETn) begin
+    //     if (!HRESETn) begin
+    //         PADDR_reg <= 'b0;
+    //     end else begin
+    //         if(PENABLE || current_state == IDLE || current_state == WRITE_WAIT)  begin
+    //             PADDR_reg <= addr_reg;
+    //         end else begin
+    //             PADDR_reg <= PADDR_reg;
+    //         end
+    //     end
+    // end
 
-    assign PADDR = (HWRITE_reg_reg == 'b1) ? PADDR_reg : addr_reg;
+    assign PADDR = PADDR_reg ;
 
 
     // 数据寄存
