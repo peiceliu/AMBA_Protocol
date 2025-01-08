@@ -49,7 +49,7 @@ reg     [2:0]               state1              ;       //TODO 'b101: AHB->APB w
 reg     [2:0]               state2              ;
 reg     [3:0]               hprot_r             ;
 reg     [ADDRWIDTH-1:0]     addr_r              ;
-reg                         hready_up           ;       // pull HREADY UP when H2P read is first command
+// reg                         hready_up           ;       // pull HREADY UP when H2P read is first command
 
 localparam H2P_WRITE = 'b101;
 localparam H2P_READ = 'b100;
@@ -59,32 +59,32 @@ always @(posedge HCLK or negedge HRESETn) begin
         state1 <= 'd0;
         PADDR <= 'd0;
         PWDATA <= 'd0;
-        hready_up <= 'd0;
+        // hready_up <= 'd0;
     end else begin
         if (PCLKEN) begin
         `ifdef APB3
-            if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && state2 == 'd0) begin
+            if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ)) begin
                 state1 <= H2P_READ;
                 PADDR <= HADDR;
-                hready_up <= 'd1;
+                // hready_up <= 'd1;
             end else if ((PENABLE && PREADY) || state1 == 'd0) begin
                 state1 <= state2;
                 PADDR <= addr_r;
                 PWDATA <= HWDATA;
             end else begin
-                hready_up <= 'd0;
+                // hready_up <= 'd0;
             end
         `else 
-            if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && state2 == 'd0) begin
+            if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ)) begin
                 state1 <= H2P_READ;
                 PADDR <= HADDR;
-                hready_up <= 'd1;
+                // hready_up <= 'd1;
             end else if (PENABLE || state1 == 'd0) begin
                 state1 <= state2;
                 PADDR <= addr_r;
                 PWDATA <= HWDATA;
             end else begin
-                hready_up <= 'd0;
+                // hready_up <= 'd0;
             end
         `endif
         end
@@ -112,29 +112,29 @@ always @(posedge HCLK or negedge HRESETn) begin
         hprot_r <= 'd0;
     end else begin
     `ifdef APB3
-        if (PENABLE && PREADY && (~HSEL || HTRANS[1] || state1 == H2P_READ)) begin
+        if ((~PENABLE || ~PREADY) && state1 == H2P_READ) begin
             state2 <= 'd0;
             addr_r <= 'd0;
             hprot_r <= 'd0;
-        end else if (HSEL && HREADYIN && HTRANS[1] && HWRITE && state2 == 'd0) begin
+        end else if (HSEL && HREADYIN && HTRANS[1] && HWRITE) begin
             state2 <= H2P_WRITE;
             addr_r <= HADDR;
             hprot_r <= HPROT;
-        end else if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && state2 == 'd0) begin
+        end else if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE) begin
             state2 <= H2P_READ;
             addr_r <= HADDR;
             hprot_r <= HPROT;
         end
     `else
-        if (PENABLE && (~HSEL || HTRANS[1] || state1 == H2P_READ)) begin
+        if (~PENABLE && state1 == H2P_READ) begin
             state2 <= 'd0;
             addr_r <= 'd0;
             hprot_r <= 'd0;
-        end else if (HSEL && HREADYIN && HTRANS[1] && HWRITE && state2 == 'd0) begin
+        end else if (HSEL && HREADYIN && HTRANS[1] && HWRITE) begin
             state2 <= H2P_WRITE;
             addr_r <= HADDR;
             hprot_r <= HPROT;
-        end else if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && state2 == 'd0) begin
+        end else if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE) begin
             state2 <= H2P_READ;
             addr_r <= HADDR;
             hprot_r <= HPROT;
@@ -169,19 +169,15 @@ end
 always @(*) begin
     HREADYOUT = 'd1;
     `ifdef APB3
-        if (state1 == H2P_WRITE && state2 == H2P_WRITE && (~PENABLE || ~PREADY)) begin
+        if (state1 != 'd0 && (~PENABLE || ~PREADY)) begin
             HREADYOUT = 'd0;
         end else if (state1 == H2P_WRITE && state2 == H2P_READ) begin
-            HREADYOUT = 'd0;
-        end else if (state1 == H2P_READ && (~PENABLE || ~PREADY) && ~hready_up) begin
             HREADYOUT = 'd0;
         end
     `else 
-        if (state1 == H2P_WRITE && state2 == H2P_WRITE && ~PENABLE) begin
+        if (state1 != 'd0 && ~PENABLE) begin
             HREADYOUT = 'd0;
         end else if (state1 == H2P_WRITE && state2 == H2P_READ) begin
-            HREADYOUT = 'd0;
-        end else if (state1 == H2P_READ && ~PENABLE && ~hready_up) begin
             HREADYOUT = 'd0;
         end
     `endif
