@@ -257,7 +257,7 @@ module ahb2apb_bridge2 #(
             PWRITE <= 'b0;
             PADDR_reg <= 'b0;
         end else begin
-            if((current_state == IDLE && ahb_read)||(current_state == PROCESSING && ahb_read))begin
+            if((current_state == IDLE && ahb_read)||(current_state == PROCESSING && !HWRITE_reg))begin
                 PWRITE <= HWRITE;
                 PADDR_reg <= HADDR;
             end else begin
