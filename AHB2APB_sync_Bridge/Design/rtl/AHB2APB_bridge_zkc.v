@@ -115,7 +115,7 @@ module ahb2apb_bridge #(
                 end
             end
             SETUP: begin
-                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0) begin
+                if((HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0)||(HWRITE_reg_reg == 'b0 && HWRITE_reg == 'b1) ) begin
                     next_state = READ_WAIT;
                 end else begin
                     next_state = PROCESSING;
