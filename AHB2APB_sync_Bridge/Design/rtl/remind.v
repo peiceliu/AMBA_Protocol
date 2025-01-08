@@ -141,7 +141,8 @@ module ahb2apb_bridge2 #(
                     next_state = PROCESSING;
                 end
                 `else
-                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
+                // if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
+                if(HWRITE_reg == 'b0 && HWRITE) begin
                     next_state = WRITE_WAIT;
                 end else if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
