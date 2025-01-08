@@ -1,4 +1,4 @@
-module AHB2APB_Bridge #(
+module ahb2apb_Bridge #(
     parameter ADDRWIDTH = 16,
     parameter DATAWIDTH = 32
 ) (
@@ -10,7 +10,7 @@ module AHB2APB_Bridge #(
     input       [ADDRWIDTH-1:0] HADDR       ,
     input                       HWRITE      ,
     input       [DATAWIDTH-1:0] HWDATA      ,
-    input                       HREADYIN    ,
+    input                       HREADY    ,
     input       [2:0]           HSIZE       ,
 
     input       [1:0]           HTRANS      ,
@@ -63,7 +63,7 @@ always @(posedge HCLK or negedge HRESETn) begin
     end else begin
         if (PCLKEN) begin
         `ifdef APB3
-            if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ)) begin
+            if (HSEL && HREADY && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ) && state2 == 'd0) begin
                 state1 <= H2P_READ;
                 PADDR <= HADDR;
                 // hready_up <= 'd1;
@@ -75,7 +75,7 @@ always @(posedge HCLK or negedge HRESETn) begin
                 // hready_up <= 'd0;
             end
         `else 
-            if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ)) begin
+            if (HSEL && HREADY && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ) && state2 == 'd0) begin
                 state1 <= H2P_READ;
                 PADDR <= HADDR;
                 // hready_up <= 'd1;
@@ -116,11 +116,11 @@ always @(posedge HCLK or negedge HRESETn) begin
             state2 <= 'd0;
             addr_r <= 'd0;
             hprot_r <= 'd0;
-        end else if (HSEL && HREADYIN && HTRANS[1] && HWRITE) begin
+        end else if (HSEL && HREADY && HTRANS[1] && HWRITE) begin
             state2 <= H2P_WRITE;
             addr_r <= HADDR;
             hprot_r <= HPROT;
-        end else if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE) begin
+        end else if (HSEL && HREADY && HTRANS[1] && ~HWRITE) begin
             state2 <= H2P_READ;
             addr_r <= HADDR;
             hprot_r <= HPROT;
@@ -130,11 +130,11 @@ always @(posedge HCLK or negedge HRESETn) begin
             state2 <= 'd0;
             addr_r <= 'd0;
             hprot_r <= 'd0;
-        end else if (HSEL && HREADYIN && HTRANS[1] && HWRITE) begin
+        end else if (HSEL && HREADY && HTRANS[1] && HWRITE) begin
             state2 <= H2P_WRITE;
             addr_r <= HADDR;
             hprot_r <= HPROT;
-        end else if (HSEL && HREADYIN && HTRANS[1] && ~HWRITE) begin
+        end else if (HSEL && HREADY && HTRANS[1] && ~HWRITE) begin
             state2 <= H2P_READ;
             addr_r <= HADDR;
             hprot_r <= HPROT;
