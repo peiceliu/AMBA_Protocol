@@ -240,17 +240,32 @@ module ahb2apb_bridge2 #(
         end
     end
 
+    // always@ (posedge HCLK or negedge HRESETn) begin
+    //     if(!HRESETn)begin
+    //         PWRITE <= 'b0;
+    //     end else begin
+    //         if(ahb_active)begin
+    //             PWRITE <= HWRITE_reg;
+    //         end else begin
+    //             PWRITE <= PWRITE;
+    //         end
+    //     end
+    // end
+
     always@ (posedge HCLK or negedge HRESETn) begin
         if(!HRESETn)begin
             PWRITE <= 'b0;
         end else begin
-            if(ahb_active)begin
-                PWRITE <= HWRITE_reg;
+            if(current_state == IDLE && ahb_read)begin
+                PWRITE <= HWRITE;
             end else begin
-                PWRITE <= PWRITE;
+                if(PENABLE || current_state == WRITE_WAIT) begin
+                    PWRITE <= HWRITE_reg;
+                end
             end
         end
     end
+
 
 
     always @(posedge HCLK or negedge HRESETn) begin
