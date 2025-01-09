@@ -72,9 +72,9 @@ module ahb2apb_bridge2 #(
     localparam IDLE  = 3'b000;
     localparam SETUP = 3'b001;
     localparam PROCESSING = 3'b010;
-    localparam READ_WAIT = 3'b011;
-    localparam READ_WAIT2 = 3'b100;
-    localparam WRITE_WAIT = 3'b101;
+    localparam READ_WAIT = 3'b011;  // 3
+    localparam READ_WAIT2 = 3'b100; // 4
+    localparam WRITE_WAIT = 3'b101; // 5
 
     // AHB 信号
     wire ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY; // HTRANS[1] == 1 可进行传输
@@ -107,29 +107,39 @@ module ahb2apb_bridge2 #(
     always @(*) begin
         case (current_state)
             IDLE: begin
-                if (ahb_write) begin
+                if (ahb_write && !HWRITE_reg ) begin
                     next_state = WRITE_WAIT;
-                end else if (ahb_read) begin
+                end else if (ahb_read ||(ahb_write && HWRITE_reg)) begin
                     next_state = SETUP;
                 end else begin
                     next_state = IDLE;
                 end
             end
             WRITE_WAIT:begin
+                if(HSEL && HTRANS[1]) begin
                     next_state = SETUP;
+                end else begin
+                    next_state = WRITE_WAIT;
+                end
             end
             SETUP: begin
-                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin
+                if(HSEL && HTRANS[1] && HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin // HSEL && HTRANS[1] 且之前是写读操作
                     next_state = READ_WAIT;
-                end else begin
+                end else if(HSEL && HTRANS[1]) begin
                     next_state = PROCESSING;
+                end else begin
+                    next_state = SETUP;
                 end
             end
             READ_WAIT: begin
                 next_state = READ_WAIT2;
             end
             READ_WAIT2: begin
-                next_state = PROCESSING;
+                if(HSEL && HTRANS[1]) begin
+                    next_state = PROCESSING;
+                end else begin
+                    next_state = READ_WAIT2;
+                end
             end
             PROCESSING: begin
                 `ifdef APB3
@@ -142,7 +152,7 @@ module ahb2apb_bridge2 #(
                 end
                 `else
                 // if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
-                if(HWRITE_reg == 'b0 && HWRITE) begin
+                if(HSEL && HTRANS[1] && !HWRITE_reg && HWRITE) begin
                     next_state = WRITE_WAIT;
                 end else if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
@@ -230,7 +240,7 @@ module ahb2apb_bridge2 #(
             addr_reg <= 'b0;
             HWRITE_reg <= 'b0;
             HWRITE_reg_reg <= 'b0;
-        end else if ((current_state == IDLE && HSEL)|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
+        end else if ((current_state == IDLE && HSEL && HTRANS[1])|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
             addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
             HWRITE_reg <= HWRITE;
             HWRITE_reg_reg <= HWRITE_reg;
@@ -240,18 +250,6 @@ module ahb2apb_bridge2 #(
             HWRITE_reg_reg <= HWRITE_reg_reg;
         end
     end
-
-    // always@ (posedge HCLK or negedge HRESETn) begin
-    //     if(!HRESETn)begin
-    //         PWRITE <= 'b0;
-    //     end else begin
-    //         if(ahb_active)begin
-    //             PWRITE <= HWRITE_reg;
-    //         end else begin
-    //             PWRITE <= PWRITE;
-    //         end
-    //     end
-    // end
 
     always@ (posedge HCLK or negedge HRESETn) begin
         if(!HRESETn)begin
@@ -270,24 +268,10 @@ module ahb2apb_bridge2 #(
         end
     end
 
-
-
-    // always @(posedge HCLK or negedge HRESETn) begin
-    //     if (!HRESETn) begin
-    //         PADDR_reg <= 'b0;
-    //     end else begin
-    //         if(PENABLE || current_state == IDLE || current_state == WRITE_WAIT)  begin
-    //             PADDR_reg <= addr_reg;
-    //         end else begin
-    //             PADDR_reg <= PADDR_reg;
-    //         end
-    //     end
-    // end
-
     assign PADDR = PADDR_reg ;
 
 
-    // 数据寄存
+    // // 数据寄存
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             data_reg <= 'b0;
@@ -300,12 +284,22 @@ module ahb2apb_bridge2 #(
         end
     end
 
+    // HSEL拉低时需要寄存读数据
+    // always @(posedge HCLK or negedge HRESETn) begin
+    //     if(!HRESETn)begin
+    //         data_reg <= 'b0;
+    //     end else begin
+    //         if()begin
+    //             data_reg <= PRDATA;
+    //         end
+    // end
+
     // 写数据输出
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             PWDATA <= 'b0;
         end else begin
-            if(ahb_active || current_state == WRITE_WAIT)begin
+            if(ahb_active || (current_state == WRITE_WAIT && HSEL && HTRANS[1]))begin
                 if(wdata_ifreg)begin
                     PWDATA <= data_reg;
                 end else begin
