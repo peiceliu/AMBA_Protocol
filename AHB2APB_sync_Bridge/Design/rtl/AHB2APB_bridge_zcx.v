@@ -49,6 +49,7 @@ reg     [2:0]               state1              ;       //TODO 'b101: AHB->APB w
 reg     [2:0]               state2              ;
 reg     [3:0]               hprot_r             ;
 reg     [ADDRWIDTH-1:0]     addr_r              ;
+reg     [DATAWIDTH-1:0]     PRDATA_r            ;
 // reg                         hready_up           ;       // pull HREADY UP when H2P read is first command
 
 localparam H2P_WRITE = 'b101;
