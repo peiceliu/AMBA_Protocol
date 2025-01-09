@@ -116,7 +116,11 @@ module ahb2apb_bridge2 #(
                 end
             end
             WRITE_WAIT:begin
+                if(HSEL && HTRANS[1]) begin
                     next_state = SETUP;
+                end else begin
+                    next_state = WRITE_WAIT;
+                end
             end
             SETUP: begin
                 if(HSEL && HTRANS[1] && HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin // HSEL && HTRANS[1] 且之前是写读操作
@@ -236,7 +240,7 @@ module ahb2apb_bridge2 #(
             addr_reg <= 'b0;
             HWRITE_reg <= 'b0;
             HWRITE_reg_reg <= 'b0;
-        end else if ((current_state == IDLE && HSEL)|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
+        end else if ((current_state == IDLE && HSEL && HTRANS[1])|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
             addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
             HWRITE_reg <= HWRITE;
             HWRITE_reg_reg <= HWRITE_reg;
@@ -246,18 +250,6 @@ module ahb2apb_bridge2 #(
             HWRITE_reg_reg <= HWRITE_reg_reg;
         end
     end
-
-    // always@ (posedge HCLK or negedge HRESETn) begin
-    //     if(!HRESETn)begin
-    //         PWRITE <= 'b0;
-    //     end else begin
-    //         if(ahb_active)begin
-    //             PWRITE <= HWRITE_reg;
-    //         end else begin
-    //             PWRITE <= PWRITE;
-    //         end
-    //     end
-    // end
 
     always@ (posedge HCLK or negedge HRESETn) begin
         if(!HRESETn)begin
@@ -275,20 +267,6 @@ module ahb2apb_bridge2 #(
             end
         end
     end
-
-
-
-    // always @(posedge HCLK or negedge HRESETn) begin
-    //     if (!HRESETn) begin
-    //         PADDR_reg <= 'b0;
-    //     end else begin
-    //         if(PENABLE || current_state == IDLE || current_state == WRITE_WAIT)  begin
-    //             PADDR_reg <= addr_reg;
-    //         end else begin
-    //             PADDR_reg <= PADDR_reg;
-    //         end
-    //     end
-    // end
 
     assign PADDR = PADDR_reg ;
 
