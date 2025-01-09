@@ -71,8 +71,6 @@ always @(posedge HCLK or negedge HRESETn) begin
                 state1 <= state2;
                 PADDR <= addr_r;
                 PWDATA <= HWDATA;
-            end else begin
-                // hready_up <= 'd0;
             end
         `else 
             if (HSEL && HREADY && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ) && state2 == 'd0) begin
@@ -83,8 +81,6 @@ always @(posedge HCLK or negedge HRESETn) begin
                 state1 <= state2;
                 PADDR <= addr_r;
                 PWDATA <= HWDATA;
-            end else begin
-                // hready_up <= 'd0;
             end
         `endif
         end
@@ -183,7 +179,18 @@ always @(*) begin
     `endif
 end
 
-assign HRDATA = PRDATA;
+always @(posedge HCLK or negedge HRESETn) begin
+    if (!HRESETn) begin
+        PRDATA_r <= 'd0;
+    end else begin
+        if (state1 == H2P_READ && PSEL && PENABLE) begin
+            PRDATA_r <= PRDATA;
+        end
+    end
+end 
+
+assign HRDATA = (state1 == H2P_READ && PSEL && PENABLE && HSEL && HTRANS[1] && HREADYOUT) ? PRDATA : PRDATA_r;
+   
 assign APBACTIVE = (state1 != 'd0 || state2 != 'd0);
 `ifdef APB3
     assign HRESP = PSLVERR;
