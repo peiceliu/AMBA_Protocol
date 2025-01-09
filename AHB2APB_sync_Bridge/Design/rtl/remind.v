@@ -45,6 +45,7 @@ module ahb2apb_bridge2 #(
 
     // 内部信号定义
     reg [DATAWIDTH-1:0] data_reg; // 数据寄存
+    reg [DATAWIDTH-1:0] PRDATA_reg; // 地址寄存
     reg [ADDRWIDTH-1:0] addr_reg; // 地址寄存
     reg [ADDRWIDTH-1:0] PADDR_reg; // 地址寄存
     // reg ahb_read_active;                // AHB读指示
@@ -154,6 +155,8 @@ module ahb2apb_bridge2 #(
                 // if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
                 if(HSEL && HTRANS[1] && !HWRITE_reg && HWRITE) begin
                     next_state = WRITE_WAIT;
+                end else if(!HSEL || !HTRANS[1]) begin
+                    next_state = PROCESSING;
                 end else if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
                 end else if (PCLKEN) begin
@@ -256,7 +259,7 @@ module ahb2apb_bridge2 #(
             PWRITE <= 'b0;
             PADDR_reg <= 'b0;
         end else begin
-            if((current_state == IDLE && ahb_read)||(current_state == PROCESSING && !HWRITE_reg))begin
+            if((current_state == IDLE && ahb_read)||(current_state == PROCESSING && !HWRITE_reg && HSEL && HTRANS[1]))begin
                 PWRITE <= HWRITE;
                 PADDR_reg <= HADDR;
             end else begin
@@ -312,7 +315,19 @@ module ahb2apb_bridge2 #(
     end
 
     // 读数据输出
-    assign HRDATA = (rdata_ifreg == 1'b1) ? data_reg : PRDATA ;
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            PRDATA_reg <= 'b0;
+        end else begin
+            if (PENABLE) begin
+                PRDATA_reg <= PRDATA;
+            end else begin
+                PRDATA_reg <= PRDATA_reg;
+            end
+        end
+    end
+
+    assign HRDATA = (PENABLE && HSEL && HTRANS[1]) ? PRDATA : PRDATA_reg ;
 
     assign HRESP = 'b0;
 
