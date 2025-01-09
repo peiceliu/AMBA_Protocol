@@ -68,19 +68,23 @@ always @(posedge HCLK or negedge HRESETn) begin
                 state1 <= H2P_READ;
                 PADDR <= HADDR;
                 // hready_up <= 'd1;
-            end else if ((PENABLE && PREADY) || state1 == 'd0) begin
+            end else if (((PENABLE && PREADY) || state1 == 'd0) && ((HSEL && HREADY && HTRANS[1]) || state2 == H2P_READ)) begin
                 state1 <= state2;
                 PADDR <= addr_r;
-            end
+            end else if (PENABLE && PREADY && (~HSEL || ~HREADY || ~HTRANS[1]) && state2 != H2P_READ) begin
+                state1 <= 'd0;    
+            end 
         `else 
             if (HSEL && HREADY && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ) && state2 == 'd0) begin
                 state1 <= H2P_READ;
                 PADDR <= HADDR;
                 // hready_up <= 'd1;
-            end else if (PENABLE || state1 == 'd0) begin
+            end else if ((PENABLE || state1 == 'd0) && ((HSEL && HREADY && HTRANS[1]) || state2 == H2P_READ)) begin
                 state1 <= state2;
                 PADDR <= addr_r;
-            end
+            end else if (PENABLE && (~HSEL || ~HREADY || ~HTRANS[1]) && state2 != H2P_READ) begin
+                state1 <= 'd0;    
+            end 
         `endif
         end
     end
@@ -106,7 +110,6 @@ always @(posedge HCLK or negedge HRESETn) begin
         addr_r <= 'd0;
         hprot_r <= 'd0;
         PWDATA <= 'd0;
-        state2_cnt <= 'd0;
     end else begin
     `ifdef APB3
         if ((~PENABLE || ~PREADY) && state1 == H2P_READ) begin
@@ -123,8 +126,6 @@ always @(posedge HCLK or negedge HRESETn) begin
             addr_r <= HADDR;
             hprot_r <= HPROT;
             PWDATA <= HWDATA;
-        end else if (state2_cnt == 'd1 && PCLKEN) begin
-            state2 <= 'd0;
         end
     `else
         if (~PENABLE && state1 == H2P_READ) begin
@@ -141,17 +142,8 @@ always @(posedge HCLK or negedge HRESETn) begin
             addr_r <= HADDR;
             hprot_r <= HPROT;
             PWDATA <= HWDATA;
-        end else if (state2_cnt == 'd1 && PCLKEN) begin
-            state2 <= 'd0;
         end
     `endif
-        if (HSEL && HREADY && HTRANS[1]) begin
-            state2_cnt <= 'd0;
-        end else if (state2_cnt == 'd1 && PCLKEN) begin
-            state2_cnt <= 'd0;
-        end else if (state2 != 'd0 && PCLKEN) begin
-            state2_cnt <= state2_cnt + 'd1;
-        end
     end
 end
 
@@ -216,5 +208,6 @@ assign APBACTIVE = (state1 != 'd0 || state2 != 'd0);
 `ifdef APB4 
     assign PSTRB = 'b1111;
 `endif
+
 
 endmodule
