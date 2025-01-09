@@ -50,6 +50,7 @@ reg     [2:0]               state2              ;
 reg     [3:0]               hprot_r             ;
 reg     [ADDRWIDTH-1:0]     addr_r              ;
 reg     [DATAWIDTH-1:0]     PRDATA_r            ;
+reg     [1:0]               state2_cnt          ;
 // reg                         hready_up           ;       // pull HREADY UP when H2P read is first command
 
 localparam H2P_WRITE = 'b101;
@@ -105,6 +106,7 @@ always @(posedge HCLK or negedge HRESETn) begin
         addr_r <= 'd0;
         hprot_r <= 'd0;
         PWDATA <= 'd0;
+        state2_cnt <= 'd0;
     end else begin
     `ifdef APB3
         if ((~PENABLE || ~PREADY) && state1 == H2P_READ) begin
@@ -121,10 +123,9 @@ always @(posedge HCLK or negedge HRESETn) begin
             addr_r <= HADDR;
             hprot_r <= HPROT;
             PWDATA <= HWDATA;
-        end else if (PENABLE && PREADY) begin
+        end else if (state2_cnt == 'd1 && PCLKEN) begin
             state2 <= 'd0;
         end
-
     `else
         if (~PENABLE && state1 == H2P_READ) begin
             state2 <= 'd0;
@@ -140,10 +141,17 @@ always @(posedge HCLK or negedge HRESETn) begin
             addr_r <= HADDR;
             hprot_r <= HPROT;
             PWDATA <= HWDATA;
-        end else if (PENABLE) begin
+        end else if (state2_cnt == 'd1 && PCLKEN) begin
             state2 <= 'd0;
         end
     `endif
+        if (HSEL && HREADY && HTRANS[1]) begin
+            state2_cnt <= 'd0;
+        end else if (state2_cnt == 'd1 && PCLKEN) begin
+            state2_cnt <= 'd0;
+        end else if (state2 != 'd0 && PCLKEN) begin
+            state2_cnt <= state2_cnt + 'd1;
+        end
     end
 end
 
@@ -208,11 +216,5 @@ assign APBACTIVE = (state1 != 'd0 || state2 != 'd0);
 `ifdef APB4 
     assign PSTRB = 'b1111;
 `endif
-
-
-
-
-
-
 
 endmodule
