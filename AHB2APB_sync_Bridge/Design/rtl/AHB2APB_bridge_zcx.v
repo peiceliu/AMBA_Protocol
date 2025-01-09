@@ -59,7 +59,6 @@ always @(posedge HCLK or negedge HRESETn) begin
     if (!HRESETn) begin
         state1 <= 'd0;
         PADDR <= 'd0;
-        PWDATA <= 'd0;
         // hready_up <= 'd0;
     end else begin
         if (PCLKEN) begin
@@ -71,7 +70,6 @@ always @(posedge HCLK or negedge HRESETn) begin
             end else if ((PENABLE && PREADY) || state1 == 'd0) begin
                 state1 <= state2;
                 PADDR <= addr_r;
-                PWDATA <= HWDATA;
             end
         `else 
             if (HSEL && HREADY && HTRANS[1] && ~HWRITE && (state1 == 'd0 || state1 == H2P_READ) && state2 == 'd0) begin
@@ -81,7 +79,6 @@ always @(posedge HCLK or negedge HRESETn) begin
             end else if (PENABLE || state1 == 'd0) begin
                 state1 <= state2;
                 PADDR <= addr_r;
-                PWDATA <= HWDATA;
             end
         `endif
         end
@@ -107,6 +104,7 @@ always @(posedge HCLK or negedge HRESETn) begin
         state2 <= 'd0;
         addr_r <= 'd0;
         hprot_r <= 'd0;
+        PWDATA <= 'd0;
     end else begin
     `ifdef APB3
         if ((~PENABLE || ~PREADY) && state1 == H2P_READ) begin
@@ -117,10 +115,12 @@ always @(posedge HCLK or negedge HRESETn) begin
             state2 <= H2P_WRITE;
             addr_r <= HADDR;
             hprot_r <= HPROT;
+            PWDATA <= HWDATA;
         end else if (HSEL && HREADY && HTRANS[1] && ~HWRITE) begin
             state2 <= H2P_READ;
             addr_r <= HADDR;
             hprot_r <= HPROT;
+            PWDATA <= HWDATA;
         end
     `else
         if (~PENABLE && state1 == H2P_READ) begin
@@ -131,10 +131,12 @@ always @(posedge HCLK or negedge HRESETn) begin
             state2 <= H2P_WRITE;
             addr_r <= HADDR;
             hprot_r <= HPROT;
+            PWDATA <= HWDATA;
         end else if (HSEL && HREADY && HTRANS[1] && ~HWRITE) begin
             state2 <= H2P_READ;
             addr_r <= HADDR;
             hprot_r <= HPROT;
+            PWDATA <= HWDATA;
         end
     `endif
     end
