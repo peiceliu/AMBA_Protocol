@@ -57,6 +57,8 @@ module ahb2apb_bridge2 #(
 
     reg HWRITE_reg_reg; // AHB write寄存
 
+    reg PENABLE_reg; // APB enable寄存
+
     // 状态机定义
     // typedef enum logic [1:0] {
     //     IDLE  = 2'b00,
@@ -244,7 +246,8 @@ module ahb2apb_bridge2 #(
             HWRITE_reg <= 'b0;
             HWRITE_reg_reg <= 'b0;
         end else if ((current_state == IDLE && HSEL && HTRANS[1])|| ahb_active) begin // ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY
-            addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
+            // addr_reg <= {HADDR[ADDRWIDTH-1:2],2'b00} ;
+            addr_reg <= HADDR;
             HWRITE_reg <= HWRITE;
             HWRITE_reg_reg <= HWRITE_reg;
         end else begin
@@ -314,12 +317,20 @@ module ahb2apb_bridge2 #(
         end
     end
 
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            PENABLE_reg <= 'b0;
+        end else begin
+            PENABLE_reg <= PENABLE ;
+        end
+    end
+
     // 读数据输出
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             PRDATA_reg <= 'b0;
         end else begin
-            if (PENABLE) begin
+            if (!PENABLE_reg && PENABLE) begin
                 PRDATA_reg <= PRDATA;
             end else begin
                 PRDATA_reg <= PRDATA_reg;
