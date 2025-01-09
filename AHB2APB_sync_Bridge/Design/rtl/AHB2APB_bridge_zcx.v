@@ -121,7 +121,10 @@ always @(posedge HCLK or negedge HRESETn) begin
             addr_r <= HADDR;
             hprot_r <= HPROT;
             PWDATA <= HWDATA;
+        end else if (PENABLE && PREADY) begin
+            state2 <= 'd0;
         end
+
     `else
         if (~PENABLE && state1 == H2P_READ) begin
             state2 <= 'd0;
@@ -137,6 +140,8 @@ always @(posedge HCLK or negedge HRESETn) begin
             addr_r <= HADDR;
             hprot_r <= HPROT;
             PWDATA <= HWDATA;
+        end else if (PENABLE) begin
+            state2 <= 'd0;
         end
     `endif
     end
