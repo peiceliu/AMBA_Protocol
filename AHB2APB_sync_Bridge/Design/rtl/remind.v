@@ -138,11 +138,7 @@ module ahb2apb_bridge2 #(
                 next_state = READ_WAIT2;
             end
             READ_WAIT2: begin
-                if(HSEL && HTRANS[1]) begin
                     next_state = PROCESSING;
-                end else begin
-                    next_state = READ_WAIT2;
-                end
             end
             PROCESSING: begin
                 `ifdef APB3
@@ -157,7 +153,7 @@ module ahb2apb_bridge2 #(
                 // if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
                 if(HSEL && HTRANS[1] && !HWRITE_reg && HWRITE) begin
                     next_state = WRITE_WAIT;
-                end else if(!HSEL || !HTRANS[1]) begin
+                end else if((!HSEL || !HTRANS[1]) && !HWRITE_reg) begin
                     next_state = PROCESSING;
                 end else if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
@@ -338,7 +334,8 @@ module ahb2apb_bridge2 #(
         end
     end
 
-    assign HRDATA = (PENABLE && HSEL && HTRANS[1]) ? PRDATA : PRDATA_reg ;
+    // assign HRDATA = (PENABLE && HSEL && HTRANS[1]) ? PRDATA : PRDATA_reg ;
+    assign HRDATA = (PENABLE_reg == 'b1 && PENABLE == 'b1) ? PRDATA_reg : PRDATA ;
 
     assign HRESP = 'b0;
 
