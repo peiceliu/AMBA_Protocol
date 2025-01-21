@@ -57,7 +57,7 @@ module ahb2apb_bridge2 #(
 
     reg HWRITE_reg_reg; // AHB write寄存
 
-    reg PENABLE_reg; // APB enable寄存
+
 
     // 状态机定义
     // typedef enum logic [1:0] {
@@ -70,6 +70,7 @@ module ahb2apb_bridge2 #(
 
     reg [2:0]           current_state;
     reg [2:0]           next_state;
+    reg [2:0]           last_state; // APB state寄存
 
 
     localparam IDLE  = 3'b000;
@@ -78,6 +79,7 @@ module ahb2apb_bridge2 #(
     localparam READ_WAIT = 3'b011;  // 3
     localparam READ_WAIT2 = 3'b100; // 4
     localparam WRITE_WAIT = 3'b101; // 5
+    // localparam READ_PROCS = 3'b110; // 6
 
     // AHB 信号
     wire ahb_active = HSEL && (HTRANS[1] == 'b1) && HREADY; // HTRANS[1] == 1 可进行传输
@@ -106,6 +108,14 @@ module ahb2apb_bridge2 #(
         end
     end
 
+    always @(posedge HCLK or negedge HRESETn) begin
+        if (!HRESETn) begin
+            last_state <= IDLE;
+        end else begin
+            last_state <= current_state;
+        end
+    end
+
     // 状态机转换
     always @(*) begin
         case (current_state)
@@ -126,7 +136,8 @@ module ahb2apb_bridge2 #(
                 end
             end
             SETUP: begin
-                if(HSEL && HTRANS[1] && HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin // HSEL && HTRANS[1] 且之前是写读操作
+                // if(HSEL && HTRANS[1] && HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin // HSEL && HTRANS[1] 且之前是写读操作
+                if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin
                     next_state = READ_WAIT;
                 end else if(HSEL && HTRANS[1]) begin
                     next_state = PROCESSING;
@@ -138,8 +149,19 @@ module ahb2apb_bridge2 #(
                 next_state = READ_WAIT2;
             end
             READ_WAIT2: begin
+                // if(HWRITE_reg == 'b0 && (!HSEL || !HTRANS[1]))begin
+                //     next_state = READ_PROCS;
+                // end else begin
                     next_state = PROCESSING;
+                
             end
+            // READ_PROCS: begin
+            //     if(HSEL && HTRANS[1])begin
+            //         next_state = PROCESSING;
+            //     end else begin
+            //         next_state = READ_PROCS;
+            //     end
+            // end
             PROCESSING: begin
                 `ifdef APB3
                 if (PREADY && PCLKEN && ahb_active) begin
@@ -207,9 +229,16 @@ module ahb2apb_bridge2 #(
                 HREADYOUT = 'b0;
                 apb_transaction_done = 'b0;
             end
+            // READ_PROCS:begin
+            //     PSEL = 'b1;
+            //     PENABLE = 'b0;
+            //     APBACTIVE = 'b1;
+            //     HREADYOUT = 'b1;
+            //     apb_transaction_done = 'b0;
+            // end
             PROCESSING:begin
                 PSEL = 'b1;
-                PENABLE = 'b1;
+                PENABLE = HSEL && HTRANS[1];
                 APBACTIVE = 'b1;
                 HREADYOUT = 'b1;
                 apb_transaction_done = 'b1;
@@ -302,31 +331,27 @@ module ahb2apb_bridge2 #(
             PWDATA <= 'b0;
         end else begin
             if(ahb_active || (current_state == WRITE_WAIT && HSEL && HTRANS[1]))begin
-                if(wdata_ifreg)begin
-                    PWDATA <= data_reg;
-                end else begin
-                    PWDATA <= HWDATA;
-                end
+                PWDATA <= HWDATA;
             end else begin
                 PWDATA <= PWDATA;
             end
         end
     end
 
-    always @(posedge HCLK or negedge HRESETn) begin
-        if (!HRESETn) begin
-            PENABLE_reg <= 'b0;
-        end else begin
-            PENABLE_reg <= PENABLE ;
-        end
-    end
+    // always @(posedge HCLK or negedge HRESETn) begin
+    //     if (!HRESETn) begin
+    //         PENABLE_reg <= 'b0;
+    //     end else begin
+    //         PENABLE_reg <= PENABLE ;
+    //     end
+    // end
 
     // 读数据输出
     always @(posedge HCLK or negedge HRESETn) begin
         if (!HRESETn) begin
             PRDATA_reg <= 'b0;
         end else begin
-            if (!PENABLE_reg && PENABLE) begin
+            if (last_state == READ_WAIT2 && current_state == PROCESSING) begin
                 PRDATA_reg <= PRDATA;
             end else begin
                 PRDATA_reg <= PRDATA_reg;
@@ -335,7 +360,7 @@ module ahb2apb_bridge2 #(
     end
 
     // assign HRDATA = (PENABLE && HSEL && HTRANS[1]) ? PRDATA : PRDATA_reg ;
-    assign HRDATA = (PENABLE_reg == 'b1 && PENABLE == 'b1) ? PRDATA_reg : PRDATA ;
+    assign HRDATA = (PENABLE == 'b1 && last_state == PROCESSING) ? PRDATA_reg : PRDATA ;
 
     assign HRESP = 'b0;
 
