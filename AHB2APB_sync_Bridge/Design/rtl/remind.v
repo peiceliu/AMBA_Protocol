@@ -139,11 +139,10 @@ module ahb2apb_bridge2 #(
                 // if(HSEL && HTRANS[1] && HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin // HSEL && HTRANS[1] 且之前是写读操作
                 if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 ) begin
                     next_state = READ_WAIT;
-                end else if(HSEL && HTRANS[1]) begin
-                    next_state = PROCESSING;
+                // end else if(HSEL && HTRANS[1]) begin
                 end else begin
-                    next_state = SETUP;
-                end
+                    next_state = PROCESSING;
+                end 
             end
             READ_WAIT: begin
                 next_state = READ_WAIT2;
@@ -155,13 +154,6 @@ module ahb2apb_bridge2 #(
                     next_state = PROCESSING;
                 
             end
-            // READ_PROCS: begin
-            //     if(HSEL && HTRANS[1])begin
-            //         next_state = PROCESSING;
-            //     end else begin
-            //         next_state = READ_PROCS;
-            //     end
-            // end
             PROCESSING: begin
                 `ifdef APB3
                 if (PREADY && PCLKEN && ahb_active) begin
@@ -173,9 +165,9 @@ module ahb2apb_bridge2 #(
                 end
                 `else
                 // if(HWRITE_reg_reg == 'b1 && HWRITE_reg == 'b0 && HWRITE) begin
-                if(HSEL && HTRANS[1] && !HWRITE_reg && HWRITE) begin
+                if(HSEL && HTRANS[1] && !HWRITE_reg && HWRITE) begin //选中 前读现写
                     next_state = WRITE_WAIT;
-                end else if((!HSEL || !HTRANS[1]) && !HWRITE_reg) begin
+                end else if((!HSEL || !HTRANS[1]) && !HWRITE_reg) begin //未选中 前读 
                     next_state = PROCESSING;
                 end else if (PCLKEN && ahb_active) begin
                     next_state = SETUP;
@@ -229,16 +221,9 @@ module ahb2apb_bridge2 #(
                 HREADYOUT = 'b0;
                 apb_transaction_done = 'b0;
             end
-            // READ_PROCS:begin
-            //     PSEL = 'b1;
-            //     PENABLE = 'b0;
-            //     APBACTIVE = 'b1;
-            //     HREADYOUT = 'b1;
-            //     apb_transaction_done = 'b0;
-            // end
             PROCESSING:begin
                 PSEL = 'b1;
-                PENABLE = HSEL && HTRANS[1];
+                PENABLE = (HWRITE_reg == 'b0)? (HSEL && HTRANS[1]): 1'b1;
                 APBACTIVE = 'b1;
                 HREADYOUT = 'b1;
                 apb_transaction_done = 'b1;
@@ -252,17 +237,6 @@ module ahb2apb_bridge2 #(
         end
         endcase
     end
-
-    // always @(*) begin
-    //     HREADYOUT = 'b1;
-    //     if(current_state == SETUP) begin
-    //         HREADYOUT = 'b0;
-    //     end else if((current_state == PROCESSING) && ) begin
-    //         HREADYOUT = 'b1;
-    //     end else begin
-    //         HREADYOUT = 'b1;
-    //     end
-    // end
 
     // 地址/写使能信号寄存
     always @(posedge HCLK or negedge HRESETn) begin
@@ -315,15 +289,6 @@ module ahb2apb_bridge2 #(
         end
     end
 
-    // HSEL拉低时需要寄存读数据
-    // always @(posedge HCLK or negedge HRESETn) begin
-    //     if(!HRESETn)begin
-    //         data_reg <= 'b0;
-    //     end else begin
-    //         if()begin
-    //             data_reg <= PRDATA;
-    //         end
-    // end
 
     // 写数据输出
     always @(posedge HCLK or negedge HRESETn) begin
@@ -338,13 +303,6 @@ module ahb2apb_bridge2 #(
         end
     end
 
-    // always @(posedge HCLK or negedge HRESETn) begin
-    //     if (!HRESETn) begin
-    //         PENABLE_reg <= 'b0;
-    //     end else begin
-    //         PENABLE_reg <= PENABLE ;
-    //     end
-    // end
 
     // 读数据输出
     always @(posedge HCLK or negedge HRESETn) begin
@@ -362,7 +320,11 @@ module ahb2apb_bridge2 #(
     // assign HRDATA = (PENABLE && HSEL && HTRANS[1]) ? PRDATA : PRDATA_reg ;
     assign HRDATA = (PENABLE == 'b1 && last_state == PROCESSING) ? PRDATA_reg : PRDATA ;
 
-    assign HRESP = 'b0;
+    `ifdef APB3
+    assign HRESP = PSLVERR;
+    `else
+    assign HRESP = 'b0 ;
+    `endif 
 
 
     // APB4 signals 随便写的
