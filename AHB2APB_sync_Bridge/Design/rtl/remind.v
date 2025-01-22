@@ -156,7 +156,11 @@ module ahb2apb_bridge2 #(
             end
             PROCESSING: begin
                 `ifdef APB3
-                if (PREADY && PCLKEN && ahb_active) begin
+                if(PREADY && HSEL && HTRANS[1] && !HWRITE_reg && HWRITE) begin //选中 前读现写
+                    next_state = WRITE_WAIT;
+                end else if((!HSEL || !HTRANS[1]) && !HWRITE_reg) begin //未选中 前读 
+                    next_state = PROCESSING;
+                end else if (PREADY && PCLKEN && ahb_active) begin
                     next_state = SETUP;
                 end else if (PREADY && PCLKEN) begin
                     next_state = IDLE;
@@ -318,7 +322,11 @@ module ahb2apb_bridge2 #(
     end
 
     // assign HRDATA = (PENABLE && HSEL && HTRANS[1]) ? PRDATA : PRDATA_reg ;
-    assign HRDATA = (PENABLE == 'b1 && last_state == PROCESSING) ? PRDATA_reg : PRDATA ;
+    `ifdef APB3
+    assign HRDATA = (PENABLE == 'b1 && last_state == PROCESSING) ? PRDATA_reg : PRDATA ; //todo
+    `else
+    assign HRDATA = PRDATA;
+    `endif
 
     `ifdef APB3
     assign HRESP = PSLVERR;
